@@ -233,4 +233,29 @@ class RuleImportTest < ActiveSupport::TestCase
       import.send(:import!)
     end
   end
+
+  test "imports valid JSON conditions whose values contain escaped quotes" do
+    csv = CSV.generate do |out|
+      out << %w[name resource_type active effective_date conditions actions]
+      out << [
+        "Quoted value rule",
+        "transaction",
+        true,
+        "",
+        [{ condition_type: "transaction_name", operator: "=", value: "ני\\u0022ע-קניה" }].to_json,
+        [{ action_type: "set_transaction_name", value: "Quoted transfer" }].to_json
+      ]
+    end
+
+    import = @family.imports.create!(type: "RuleImport", raw_file_str: csv, col_sep: ",")
+    import.generate_rows_from_csv
+
+    assert_nothing_raised do
+      import.send(:import!)
+    end
+
+    rule = Rule.find_by!(family: @family, name: "Quoted value rule")
+    condition = rule.conditions.first
+    assert_equal "ני\"ע-קניה", condition.value
+  end
 end
