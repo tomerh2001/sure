@@ -293,7 +293,7 @@ class RuleImport < Import
 
       # Most API-created rows already store valid JSON. Parse them as-is before
       # falling back to the legacy cleanup path for older malformed payloads.
-      return normalize_json_values(JSON.parse(cleaned))
+      normalize_json_values(JSON.parse(cleaned))
     rescue JSON::ParserError
       # Clean up the JSON string - remove extra escaping that might come from CSV parsing
 

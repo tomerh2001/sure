@@ -242,8 +242,8 @@ class RuleImportTest < ActiveSupport::TestCase
         "transaction",
         true,
         "",
-        [{ condition_type: "transaction_name", operator: "=", value: "ני\\u0022ע-קניה" }].to_json,
-        [{ action_type: "set_transaction_name", value: "Quoted transfer" }].to_json
+        [ { condition_type: "transaction_name", operator: "=", value: "ני\\u0022ע-קניה" } ].to_json,
+        [ { action_type: "set_transaction_name", value: "Quoted transfer" } ].to_json
       ]
     end
 
