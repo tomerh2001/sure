@@ -293,7 +293,7 @@ class RuleImport < Import
 
       # Most API-created rows already store valid JSON. Parse them as-is before
       # falling back to the legacy cleanup path for older malformed payloads.
-      normalize_json_values(JSON.parse(cleaned))
+      parse_json_payload(cleaned, normalize_legacy_strings: false)
     rescue JSON::ParserError
       # Clean up the JSON string - remove extra escaping that might come from CSV parsing
 
@@ -326,24 +326,44 @@ class RuleImport < Import
       end
 
       # Try parsing
-      normalize_json_values(JSON.parse(cleaned))
+      parse_json_payload(cleaned, normalize_legacy_strings: true)
     rescue JSON::ParserError => e
       raise JSON::ParserError.new("Invalid JSON in #{field_name}: #{e.message}. Raw value: #{json_string.inspect}")
     end
 
-    def normalize_json_values(value)
+    def parse_json_payload(payload, normalize_legacy_strings:)
+      parsed = JSON.parse(payload)
+      parsed = JSON.parse(parsed) if wrapped_json_payload?(parsed)
+
+      normalize_json_values(parsed, normalize_legacy_strings:)
+    end
+
+    def wrapped_json_payload?(value)
+      return false unless value.is_a?(String)
+
+      stripped_value = value.strip
+      stripped_value.start_with?("[", "{")
+    end
+
+    def normalize_json_values(value, normalize_legacy_strings:)
       case value
       when Array
-        value.map { |item| normalize_json_values(item) }
+        value.map { |item| normalize_json_values(item, normalize_legacy_strings:) }
       when Hash
-        value.transform_values { |item| normalize_json_values(item) }
+        value.transform_values { |item| normalize_json_values(item, normalize_legacy_strings:) }
       when String
-        value
+        normalized = value
           .gsub(/\\u([0-9a-fA-F]{4})/i) { [ $1.to_i(16) ].pack("U") }
           .gsub('\\"', '"')
-          .gsub("\\n", "\n")
-          .gsub("\\r", "\r")
-          .gsub("\\t", "\t")
+
+        if normalize_legacy_strings
+          normalized = normalized
+            .gsub("\\n", "\n")
+            .gsub("\\r", "\r")
+            .gsub("\\t", "\t")
+        end
+
+        normalized
       else
         value
       end
